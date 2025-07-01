@@ -29,7 +29,13 @@ jobs:
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: gh-runner@clientgcp-462908.iam.gserviceaccount.com
-
+        env:
+          GOOGLE_GHA_DEBUG: true
+      - name: Debug JWT claims
+        run: |
+          echo "${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" | base64 --decode | jq
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ steps.auth.outputs.id_token }}
       - name: Restore or Save cache via GCS
         id: cache
         uses: mansagroup/gcs-cache-action@v1.0.3
