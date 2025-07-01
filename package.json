@@ -1,0 +1,22 @@
+{
+    "name": "cache-stress",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Big dependency graph to test cache speed",
+    "scripts": {
+      "build": "node index.js"
+    },
+    "dependencies": {
+      "@tensorflow/tfjs": "^4.17.0",
+      "next": "^14.2.3",
+      "puppeteer": "^22.10.0",
+      "@material-ui/core": "^4.12.4",
+      "@aws-sdk/client-s3": "^3.570.0",
+      "typescript": "^5.4.4",
+      "webpack": "^5.91.0",
+      "eslint": "^9.2.0",
+      "react": "^18.3.2",
+      "react-dom": "^18.3.2"
+    }
+  }
+  

@@ -1,0 +1,38 @@
+name: GitHub Cache Benchmark (Azure Blob)
+
+on:
+  workflow_dispatch:
+
+env:
+  CACHE_KEY: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+jobs:
+  github-cache:
+    name: GitHub-hosted runner with Azure cache
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Restore cache from GitHub (Azure)
+      id: restore
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: ${{ env.CACHE_KEY }}
+        restore-keys: node-
+
+    - name: Install dependencies if cache miss
+      if: steps.restore.outputs.cache-hit != 'true'
+      run: npm ci --ignore-scripts
+
+    - name: Save cache to GitHub (Azure)
+      if: steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: node_modules
+        key: ${{ env.CACHE_KEY }}
+
+    - name: Summary
+      run: |
+        du -sh node_modules || true
+        echo "cache_hit=${{ steps.restore.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
