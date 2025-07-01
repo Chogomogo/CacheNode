@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   debug:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       GOOGLE_CLOUD_PROJECT: clientgcp-462908
 
