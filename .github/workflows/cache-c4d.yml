@@ -18,6 +18,7 @@ jobs:
       GOOGLE_CLOUD_PROJECT: clientgcp-462908
 
     steps:
+      - run: echo "WIF_PROVIDER=${{ secrets.WIF_PROVIDER }}"
       - name: Set up gcloud with WIF
         id: gcp-auth
         uses: google-github-actions/setup-gcloud@v2
