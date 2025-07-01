@@ -58,15 +58,41 @@ jobs:
             echo "zstd not installed, skipping"
           fi
 
-      - name: Restore or Save cache via GCS
-        id: cache
-        uses: mansagroup/gcs-cache-action@v1.0.3
-        with:
-          bucket: ci-cache-node-1720123456
-          path: node_modules
-          key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: node-
-          format: gzip
+      # - name: Restore or Save cache via GCS
+      #   id: cache
+      #   uses: mansagroup/gcs-cache-action@v1.0.3
+      #   with:
+      #     bucket: ci-cache-node-1720123456
+      #     path: node_modules
+      #     key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      #     restore-keys: node-
+      #     format: gzip
+          # … auth & zstd install steps above …
+
+      - name: Compute cache key
+        run: echo "CACHE_KEY=node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}" >> $GITHUB_ENV
+
+      - name: Try to restore cache
+        id: restore
+        run: |
+          gsutil cp \
+            gs://ci-cache-node-1720123456/Chogomogo/CacheNode/${CACHE_KEY}.tar.gz \
+            ./cache.tar.gz \
+            || exit 1
+          tar xzf cache.tar.gz
+        continue-on-error: true
+
+      - name: Install dependencies if cache miss
+        if: steps.restore.outcome == 'failure'
+        run: npm ci --ignore-scripts
+
+      - name: Upload new cache
+        if: steps.restore.outcome == 'failure'
+        run: |
+          tar czf cache.tar.gz node_modules
+          gsutil cp cache.tar.gz \
+            gs://ci-cache-node-1720123456/Chogomogo/CacheNode/${CACHE_KEY}.tar.gz
+
 
       - name: Install dependencies if cache miss
         if: steps.cache.outputs.cache-hit != 'true'
