@@ -28,7 +28,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: gh-runner@clientgcp-462908.iam.gserviceaccount.com
+          service_account_email: gh-runner@clientgcp-462908.iam.gserviceaccount.com
         env:
           GOOGLE_GHA_DEBUG: true
       - name: Debug JWT claims
