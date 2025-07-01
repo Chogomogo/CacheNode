@@ -15,7 +15,7 @@ jobs:
 
     env:
       BUCKET_NAME: ci-cache-node-1720123456
-      CACHE_DIR: ChogoMogo/CacheNode/
+      CACHE_DIR: Chogomogo/CacheNode/
       CACHE_FILE_NAME: cache.tar.zst
 
     steps:
