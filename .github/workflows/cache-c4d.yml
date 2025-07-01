@@ -24,21 +24,25 @@ jobs:
           node-version: '18'
 
 
-      - name: Authenticate with GCP via OIDC
-        uses: google-github-actions/auth@v2
+      - name: Configure GCP (OIDC + gcloud + ADC)
+        uses: google-github-actions/setup-gcloud@v2
         with:
+          project_id: ${{ env.GOOGLE_CLOUD_PROJECT }}
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account_email: gh-runner@clientgcp-462908.iam.gserviceaccount.com
+          export_default_credentials: true
         env:
           GOOGLE_GHA_DEBUG: true
+
       - name: Debug GCP identity & bucket access
         run: |
-          echo "---- Active gcloud Account ----"
-          gcloud auth list --filter="STATUS:ACTIVE" --format="value(account)"
-          echo "---- Configured Project ----"
+          echo "---- Active ADC account ----"
+          gcloud auth application-default list
+          echo "---- Configured project ----"
           gcloud config get-value project
           echo "---- Can we list the bucket? ----"
-          gsutil ls gs://ci-cache-node-1720123456 || true
+          gsutil ls gs://ci-cache-node-1720123456
+
       - name: Debug JWT claims
         run: |
           echo "${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" | base64 --decode | jq
