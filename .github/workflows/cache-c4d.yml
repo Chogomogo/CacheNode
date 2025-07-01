@@ -1,7 +1,11 @@
 
 name: WIF-debug
 
-on: [workflow_dispatch]
+on:
+  push:
+    branches:
+      - '*'
+  workflow_dispatch:
 
 permissions:
   id-token: write
