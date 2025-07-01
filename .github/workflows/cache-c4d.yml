@@ -31,6 +31,14 @@ jobs:
           service_account_email: gh-runner@clientgcp-462908.iam.gserviceaccount.com
         env:
           GOOGLE_GHA_DEBUG: true
+      - name: Debug GCP identity & bucket access
+        run: |
+          echo "---- Active gcloud Account ----"
+          gcloud auth list --filter="STATUS:ACTIVE" --format="value(account)"
+          echo "---- Configured Project ----"
+          gcloud config get-value project
+          echo "---- Can we list the bucket? ----"
+          gsutil ls gs://ci-cache-node-1720123456 || true
       - name: Debug JWT claims
         run: |
           echo "${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" | base64 --decode | jq
