@@ -2,8 +2,7 @@ name: GCS Cache Benchmark (Self-hosted c4d)
 
 on:
   push:
-    branches:
-      - '*'
+    branches: ['*']
   workflow_dispatch:
 
 permissions:
@@ -13,7 +12,8 @@ permissions:
 jobs:
   gcs-cache:
     runs-on: self-hosted
-  
+    env:
+      GOOGLE_CLOUD_PROJECT: clientgcp-462908        # ← 1️⃣ project that owns the bucket
 
     steps:
       - uses: actions/checkout@v4
@@ -23,38 +23,38 @@ jobs:
         with:
           node-version: '18'
 
-
-      - name: Configure GCP (OIDC + gcloud + ADC)
+      # --------------- GCP auth -----------------
+      - name: Configure GCP (OIDC → SA → ADC)
+        id: gcp-auth                                   # ← 2️⃣ give it an id
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.GOOGLE_CLOUD_PROJECT }}
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account_email: gh-runner@clientgcp-462908.iam.gserviceaccount.com
-          export_default_credentials: true
+          export_default_credentials: true             # ← 3️⃣ writes $GOOGLE_APPLICATION_CREDENTIALS
         env:
           GOOGLE_GHA_DEBUG: true
 
-      - name: Debug GCP identity & bucket access
+      # quick sanity check
+      - name: Show who we are & where the ADC file is
         run: |
-          echo "---- Active gcloud Account ----"
-          gcloud auth list --filter="STATUS:ACTIVE" --format="value(account)"
-          echo "---- Configured project ----"
-          gcloud config get-value project
-          echo "---- Can we list the bucket? ----"
-          gsutil ls gs://ci-cache-node-1720123456
+          echo "Active account: $(gcloud auth list --filter='STATUS:ACTIVE' --format='value(account)')"
+          echo "ADC path     : $GOOGLE_APPLICATION_CREDENTIALS"
+          head -3 "$GOOGLE_APPLICATION_CREDENTIALS"
 
-      - name: Debug JWT claims
-        run: |
-          echo "${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" | base64 --decode | jq
-        env:
-          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ steps.auth.outputs.id_token }}
+      - name: List bucket to confirm access
+        run: gsutil ls gs://ci-cache-node-1720123456
+
+      # --------------- Cache step ---------------
       - name: Restore or Save cache via GCS
         id: cache
         uses: mansagroup/gcs-cache-action@v1.0.3
+        env:                                            # ← 4️⃣ make sure action sees the same creds
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         with:
           bucket: ci-cache-node-1720123456
-          path: node_modules
-          key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          path:   node_modules
+          key:    node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: node-
 
       - name: Install dependencies if cache misses
