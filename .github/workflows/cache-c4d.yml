@@ -1,67 +1,50 @@
-name: GCS Cache Benchmark (Self-hosted c4d)
+| **OIDC provider ID** | Secret `${{ secrets.WIF_PROVIDER }}` must be **the full provider resource name**, e.g.:<br>`projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/github` | In the workflow log, the `setup-gcloud` step prints a line `Using workload identity provider: …`. Make sure it’s the correct resource. |
+| **Correct project** | `project_id:` in `setup-gcloud` **must** be the project that contains the WIF pool **and** the service account. | You set `GOOGLE_CLOUD_PROJECT: clientgcp-462908`; keep that. |
+| **No conflicting ADC env-vars** | The self-hosted runner sometimes has `CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE` left over. Remove any you set manually earlier. | Make sure your workflow **does not** set these vars *before* `setup-gcloud`. |
 
-on:
-  push:
-    branches: ['*']
-  workflow_dispatch:
+---
+
+## Minimal diagnostic workflow
+
+Run the snippet below — it stops after the auth step and prints everything we need to see. **Do not** include the cache action yet.
+
+```yaml
+name: WIF-debug
+
+on: [workflow_dispatch]
 
 permissions:
-  contents: read
   id-token: write
+  contents: read
 
 jobs:
-  gcs-cache:
+  debug:
     runs-on: self-hosted
     env:
-      GOOGLE_CLOUD_PROJECT: clientgcp-462908        # ← 1️⃣ project that owns the bucket
+      GOOGLE_CLOUD_PROJECT: clientgcp-462908
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      # --------------- GCP auth -----------------
-      - name: Configure GCP (OIDC → SA → ADC)
-        id: gcp-auth                                   # ← 2️⃣ give it an id
+      - name: Set up gcloud with WIF
+        id: gcp-auth
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.GOOGLE_CLOUD_PROJECT }}
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account_email: gh-runner@clientgcp-462908.iam.gserviceaccount.com
-          export_default_credentials: true             # ← 3️⃣ writes $GOOGLE_APPLICATION_CREDENTIALS
+          export_default_credentials: true
         env:
           GOOGLE_GHA_DEBUG: true
 
-      # quick sanity check
-      - name: Show who we are & where the ADC file is
+      - name: Show auth details
         run: |
-          echo "Active account: $(gcloud auth list --filter='STATUS:ACTIVE' --format='value(account)')"
-          echo "ADC path     : $GOOGLE_APPLICATION_CREDENTIALS"
-          head -3 "$GOOGLE_APPLICATION_CREDENTIALS"
-
-      - name: List bucket to confirm access
-        run: gsutil ls gs://ci-cache-node-1720123456
-
-      # --------------- Cache step ---------------
-      - name: Restore or Save cache via GCS
-        id: cache
-        uses: mansagroup/gcs-cache-action@v1.0.3
-        env:                                            # ← 4️⃣ make sure action sees the same creds
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
-        with:
-          bucket: ci-cache-node-1720123456
-          path:   node_modules
-          key:    node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: node-
-
-      - name: Install dependencies if cache misses
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci --ignore-scripts
-
-      - name: Summary
-        run: |
-          du -sh node_modules || true
-          echo "cache_hit=${{ steps.cache.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
+          echo "Active gcloud account:"
+          gcloud auth list --filter="STATUS:ACTIVE"
+          echo
+          echo "ADC file path from output:"
+          echo "${{ steps.gcp-auth.outputs.credentials_file_path }}"
+          echo
+          if [[ -f "${{ steps.gcp-auth.outputs.credentials_file_path }}" ]]; then
+            head -5 "${{ steps.gcp-auth.outputs.credentials_file_path }}"
+          else
+            echo "ADC file is missing!"
+          fi
