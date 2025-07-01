@@ -57,7 +57,7 @@ jobs:
           else
             echo "zstd not installed, skipping"
           fi
-          
+
       - name: Restore or Save cache via GCS
         id: cache
         uses: mansagroup/gcs-cache-action@v1.0.3
@@ -66,6 +66,7 @@ jobs:
           path: node_modules
           key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: node-
+          format: gzip
 
       - name: Install dependencies if cache miss
         if: steps.cache.outputs.cache-hit != 'true'
