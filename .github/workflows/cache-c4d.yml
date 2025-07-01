@@ -1,6 +1,5 @@
 name: GCS Cache Benchmark (Self-hosted c4d)
 
-
 on:
   push:
     branches:
@@ -24,6 +23,7 @@ jobs:
         with:
           node-version: '18'
 
+
       - name: Authenticate with GCP via OIDC
         uses: google-github-actions/auth@v2
         with:
@@ -45,7 +45,7 @@ jobs:
           key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: node-
 
-      - name: Install dependencies if cache miss
+      - name: Install dependencies if cache misses
         if: steps.cache.outputs.cache-hit != 'true'
         run: npm ci --ignore-scripts
 
