@@ -1,4 +1,4 @@
-name: GCS Cache Benchmark (Self-hosted c4d)
+name: Node CI with GCS Cache
 
 on:
   push:
@@ -6,22 +6,17 @@ on:
       - '*'
   workflow_dispatch:
 
-permissions:
-  contents: read
-  id-token: write
-
 jobs:
-  gcs-cache:
+  build:
     runs-on: self-hosted
-  
+
+    env:
+      BUCKET_NAME: ci-cache-node-1720123456
+      CACHE_DIR: node_modules
+      CACHE_FILE_NAME: cache.tar.zst
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
 
       - name: Authenticate with GCP via OIDC
         uses: google-github-actions/auth@v2
@@ -33,29 +28,49 @@ jobs:
         env:
           GOOGLE_GHA_DEBUG: true 
 
-      # Make sure the runner can decompress what it downloads
-      - name: Install zstd
-        run: sudo apt-get update -y && sudo apt-get install -y zstd
-      
-       # (optional) debug
-      - name: List candidate cache blobs
-        run: gsutil ls gs://ci-cache-node-1720123456/Chogomogo/CacheNode || true
-      
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v1
 
-      - name: Restore or Save cache via GCS
-        id: cache
-        uses: mansagroup/gcs-cache-action@v1.0.2
-        with:
-          bucket: ci-cache-node-1720123456
-          path: node_modules
-          key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: node-
-        
-      - name: Install dependencies if cache miss
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci --ignore-scripts
-
-      - name: Summary
+      - name: Compute cache key
+        id: compute-key
         run: |
-          du -sh node_modules || true
-          echo "cache_hit=${{ steps.cache.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
+          if [ -f package-lock.json ]; then
+            FILE_TO_HASH=package-lock.json
+          else
+            FILE_TO_HASH=package.json
+          fi
+          HASH_KEY=$(sha256sum "$FILE_TO_HASH" | awk '{print $1}')
+          echo "cache-key=$HASH_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Check cache in GCS
+        id: check-cache
+        continue-on-error: true
+        run: |
+          CACHE_KEY=${{ steps.compute-key.outputs.cache-key }}
+          OBJECT_PATH="gs://${BUCKET_NAME}/npm-cache/$CACHE_KEY/$CACHE_FILE_NAME"
+          if gsutil ls "$OBJECT_PATH" > /dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Restore cache if exists
+        if: steps.check-cache.outputs.found == 'true'
+        run: |
+          CACHE_KEY=${{ steps.compute-key.outputs.cache-key }}
+          gsutil cp gs://${BUCKET_NAME}/npm-cache/$CACHE_KEY/$CACHE_FILE_NAME ./cache.tar.zst
+          mkdir -p $CACHE_DIR
+          tar --zstd -xvf cache.tar.zst -C .
+
+      - name: Install dependencies (npm ci)
+        if: steps.check-cache.outputs.found == 'false'
+        run: |
+          npm ci
+
+      - name: Upload cache to GCS
+        if: steps.check-cache.outputs.found == 'false'
+        run: |
+          CACHE_KEY=${{ steps.compute-key.outputs.cache-key }}
+          mkdir -p ./tmp-cache
+          tar --zstd -cvf ./tmp-cache/$CACHE_FILE_NAME $CACHE_DIR
+          gsutil cp ./tmp-cache/$CACHE_FILE_NAME gs://${BUCKET_NAME}/npm-cache/$CACHE_KEY/$CACHE_FILE_NAME
