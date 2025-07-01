@@ -1,45 +1,13 @@
+- name: Set up gcloud with WIF
+  id: gcp-auth
+  uses: google-github-actions/setup-gcloud@v2
+  with:
+    project_id: clientgcp-462908
+    workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+    service_account_email: gh-runner@clientgcp-462908.iam.gserviceaccount.com
+    export_default_credentials: true
 
-name: WIF-debug
-
-on:
-  push:
-    branches:
-      - '*'
-  workflow_dispatch:
-
-permissions:
-  id-token: write
-  contents: read
-
-jobs:
-  debug:
-    runs-on: self-hosted
-    env:
-      GOOGLE_CLOUD_PROJECT: clientgcp-462908
-
-    steps:
-      - run: echo "WIF_PROVIDER=${{ secrets.WIF_PROVIDER }}"
-      - name: Set up gcloud with WIF
-        id: gcp-auth
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ env.GOOGLE_CLOUD_PROJECT }}
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account_email: gh-runner@clientgcp-462908.iam.gserviceaccount.com
-          export_default_credentials: true
-        env:
-          GOOGLE_GHA_DEBUG: true
-
-      - name: Show auth details
-        run: |
-          echo "Active gcloud account:"
-          gcloud auth list --filter="STATUS:ACTIVE"
-          echo
-          echo "ADC file path from output:"
-          echo "${{ steps.gcp-auth.outputs.credentials_file_path }}"
-          echo
-          if [[ -f "${{ steps.gcp-auth.outputs.credentials_file_path }}" ]]; then
-            head -5 "${{ steps.gcp-auth.outputs.credentials_file_path }}"
-          else
-            echo "ADC file is missing!"
-          fi
+- run: |
+    echo "Active account:"
+    gcloud auth list --filter="STATUS:ACTIVE"
+    echo "ADC file path: ${{ steps.gcp-auth.outputs.credentials_file_path }}"
