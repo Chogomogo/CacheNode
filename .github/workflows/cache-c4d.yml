@@ -2,44 +2,40 @@ name: GCS Cache Benchmark (Self-hosted c4d)
 
 on:
   push:
-    # the wildcard here means “all branches”
     branches:
       - '*'
   workflow_dispatch:
 
-
 jobs:
   gcs-cache:
     name: GCS cache on c4d runner
-    runs-on: self-hosted
+    runs-on: self-hosted, c4d
     timeout-minutes: 45
-    
-    env:
-      CACHE_KEY: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Authenticate with GCP via Workload Identity Federation
-      uses: google-github-actions/auth@v2
-      with:
-        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-        service_account: gh-runner@clientgcp-462908.iam.gserviceaccount.com
+      - name: Authenticate with GCP via OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: gh-runner@clientgcp-462908.iam.gserviceaccount.com
 
-    - name: Restore|Save cache via GCS
-      id: gcs
-      uses: mansagroup/gcs-cache-action@v2
-      with:
-        bucket: ci-cache-node-1720123456  # <--- Replace with your actual bucket name
-        path: node_modules
-        key: ${{ env.CACHE_KEY }}
-        restore-keys: node-
+      - name: Restore or Save cache via GCS
+        id: cache
+        uses: mansagroup/gcs-cache-action@v2
+        with:
+          bucket: ci-cache-node-1720123456    # ← your real bucket name
+          path: node_modules
+          key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: node-
 
-    - name: Install dependencies if cache miss
-      if: steps.gcs.outputs.cache-hit != 'true'
-      run: npm ci --ignore-scripts
+      - name: Install dependencies if cache miss
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci --ignore-scripts
 
-    - name: Summary
-      run: |
-        du -sh node_modules || true
-        echo "cache_hit=${{ steps.gcs.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
+      - name: Summary
+        run: |
+          du -sh node_modules || true
+          echo "cache_hit=${{ steps.cache.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
