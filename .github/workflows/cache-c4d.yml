@@ -1,11 +1,16 @@
 name: GCS Cache Benchmark (Self-hosted c4d)
 
+
 on:
   push:
     branches:
       - '*'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+  
 jobs:
   gcs-cache:
     runs-on: self-hosted
