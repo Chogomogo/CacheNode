@@ -1,6 +1,10 @@
 name: GCS Cache Benchmark (Self-hosted c4d)
 
 on:
+  push:
+    # the wildcard here means “all branches”
+    branches:
+      - '*'
   workflow_dispatch:
 
 
@@ -12,7 +16,7 @@ jobs:
     
     env:
       CACHE_KEY: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      
+
     steps:
     - uses: actions/checkout@v4
 
