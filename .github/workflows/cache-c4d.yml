@@ -21,15 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Authenticate with GCP via OIDC
+      - name: Authenticate with GCP via Service Account JSON
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: gh-runner@clientgcp-462908.iam.gserviceaccount.com
-          export_environment_variables: true
-          create_credentials_file: true
-        env:
-          GOOGLE_GHA_DEBUG: true 
+         credentials_json: '${{ secrets.JSON_SECRET }}'
+         export_environment_variables: true
+         create_credentials_file: true
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
