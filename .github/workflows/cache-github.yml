@@ -1,3 +1,11 @@
+name: GitHub Cache Benchmark (Azure Blob)
+
+on:
+  push:
+    branches:
+      - '*'
+  workflow_dispatch:
+
 jobs:
   github-cache:
     runs-on: ubuntu-latest
