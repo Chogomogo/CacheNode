@@ -36,8 +36,8 @@ jobs:
 
       - name: Debug GCP identity & bucket access
         run: |
-          echo "---- Active ADC account ----"
-          gcloud auth application-default list
+          echo "---- Active gcloud Account ----"
+          gcloud auth list --filter="STATUS:ACTIVE" --format="value(account)"
           echo "---- Configured project ----"
           gcloud config get-value project
           echo "---- Can we list the bucket? ----"
