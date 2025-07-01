@@ -27,6 +27,15 @@ jobs:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account_email: gh-runner@clientgcp-462908.iam.gserviceaccount.com
           export_default_credentials: true
+        env:
+          GOOGLE_GHA_DEBUG: true
+      - name: Dump Auth Info
+        run: |
+           echo "Credentials file: ${{ steps.gcp-auth.outputs.credentials_file_path }}"
+           echo "Service Account: ${{ steps.gcp-auth.outputs.service_account_email }}"
+           gcloud auth list
+           gcloud config list
+
 
       - run: |
           echo "Active account:"
