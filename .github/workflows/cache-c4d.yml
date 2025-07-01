@@ -1,5 +1,4 @@
-
-name: WIF-debug
+name: GCS Cache Benchmark (Self-hosted c4d)
 
 on:
   push:
@@ -8,36 +7,48 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: read
+  id-token: write
 
 jobs:
-  debug:
-    runs-on: ubuntu-latest
-    env:
-      GOOGLE_CLOUD_PROJECT: clientgcp-462908
+  gcs-cache:
+    runs-on: self-hosted
+  
 
     steps:
-      - run: echo "WIF_PROVIDER=${{ secrets.WIF_PROVIDER }}"
-      - name: Set up gcloud with WIF
-        id: gcp-auth
-        uses: google-github-actions/setup-gcloud@v2
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
-          project_id: clientgcp-462908
+          node-version: '18'
+
+      - name: Authenticate with GCP via OIDC
+        uses: google-github-actions/auth@v2
+        with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account_email: gh-runner@clientgcp-462908.iam.gserviceaccount.com
-          export_default_credentials: true
+          service_account: gh-runner@clientgcp-462908.iam.gserviceaccount.com
         env:
           GOOGLE_GHA_DEBUG: true
-      - name: Dump Auth Info
+      - name: Debug JWT claims
         run: |
-           echo "Credentials file: ${{ steps.gcp-auth.outputs.credentials_file_path }}"
-           echo "Service Account: ${{ steps.gcp-auth.outputs.service_account_email }}"
-           gcloud auth list
-           gcloud config list
+          echo "${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" | base64 --decode | jq
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ steps.auth.outputs.id_token }}
+      - name: Restore or Save cache via GCS
+        id: cache
+        uses: mansagroup/gcs-cache-action@v1.0.3
+        with:
+          bucket: ci-cache-node-1720123456
+          path: node_modules
+          key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: node-
 
+      - name: Install dependencies if cache miss
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci --ignore-scripts
 
-      - run: |
-          echo "Active account:"
-          gcloud auth list --filter="STATUS:ACTIVE"
-          echo "ADC file path: ${{ steps.gcp-auth.outputs.credentials_file_path }}"
+      - name: Summary
+        run: |
+          du -sh node_modules || true
+          echo "cache_hit=${{ steps.cache.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
