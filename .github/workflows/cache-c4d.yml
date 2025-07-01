@@ -1,0 +1,77 @@
+name: GCS Cache Benchmark (Self-hosted c4d)
+
+on:
+  push:
+    branches:
+      - '*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  gcs-cache:
+    runs-on: self-hosted
+  
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Authenticate with GCP via OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: gh-runner@clientgcp-462908.iam.gserviceaccount.com
+          export_environment_variables: true
+          create_credentials_file: true
+        env:
+          GOOGLE_GHA_DEBUG: true 
+
+      # Make sure the runner can decompress what it downloads
+      - name: Install zstd
+        run: sudo apt-get update -y && sudo apt-get install -y zstd
+      
+       # (optional) debug
+      - name: List candidate cache blobs
+        run: gsutil ls gs://ci-cache-node-1720123456/Chogomogo/CacheNode || true
+      
+      - name: Download & inspect cache archive
+        run: |
+          gsutil cp \
+            gs://ci-cache-node-1720123456/Chogomogo/CacheNode/node-${{ runner.os }}-*.tar* \
+            ./cache.tar
+
+          echo "file type:" && file cache.tar
+          echo "tar version:" && tar --version
+          echo "Listing contents with tar:"
+          tar tvf cache.tar | head -n 20
+          echo "Trying zstd -d → tar tvf:"
+          if command -v zstd >/dev/null; then
+            zstd -d cache.tar -c | tar tvf - | head -n20
+          else
+            echo "zstd not installed, skipping"
+          fi
+
+      - name: Restore or Save cache via GCS
+        id: cache
+        uses: mansagroup/gcs-cache-action@v1.0.2
+        with:
+          bucket: ci-cache-node-1720123456
+          path: node_modules
+          key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: node-
+        
+      - name: Install dependencies if cache miss
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci --ignore-scripts
+
+      - name: Summary
+        run: |
+          du -sh node_modules || true
+          echo "cache_hit=${{ steps.cache.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
