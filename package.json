@@ -2,21 +2,29 @@
     "name": "cache-stress",
     "version": "1.0.0",
     "private": true,
-    "description": "Big dependency graph to test cache speed",
+    "description": "Stress test for npm install caching speed",
     "scripts": {
       "build": "node index.js"
     },
     "dependencies": {
-      "@tensorflow/tfjs": "^4.17.0",
       "next": "^14.2.3",
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0",
       "puppeteer": "^22.10.0",
-      "@material-ui/core": "^4.12.4",
+      "lodash": "^4.17.21",
+      "chalk": "^5.3.0",
+      "uuid": "^9.0.0",
+      "moment": "^2.29.4",
+      "axios": "^1.6.8",
       "@aws-sdk/client-s3": "^3.570.0",
       "typescript": "^5.4.4",
       "webpack": "^5.91.0",
       "eslint": "^9.2.0",
-      "react": "^18.3.2",
-      "react-dom": "^18.3.2"
+      "prettier": "^3.2.5",
+      "dayjs": "^1.11.10",
+      "zod": "^3.22.4",
+      "express": "^4.19.2",
+      "dotenv": "^16.4.5"
     }
   }
   

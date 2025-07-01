@@ -19,9 +19,6 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Generate package-lock.json
-        run: npm install --package-lock-only
-
       - name: Authenticate with GCP via OIDC
         uses: google-github-actions/auth@v2
         with:
@@ -30,7 +27,7 @@ jobs:
 
       - name: Restore or Save cache via GCS
         id: cache
-        uses: mansagroup/gcs-cache-action@v2
+        uses: mansagroup/gcs-cache-action@v1.0.3
         with:
           bucket: ci-cache-node-1720123456
           path: node_modules
