@@ -31,10 +31,7 @@ jobs:
           export_environment_variables: true
           create_credentials_file: true
         env:
-          GOOGLE_GHA_DEBUG: true
-
-      - name: Decode ID token
-        run: echo "${{ steps.auth.outputs.id_token }}" | jq -R 'split(".") | .[1] | @base64d | fromjson'  
+          GOOGLE_GHA_DEBUG: true 
 
       - name: Debug JWT claims
         run: |
