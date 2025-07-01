@@ -1,4 +1,14 @@
+| **OIDC provider ID** | Secret `${{ secrets.WIF_PROVIDER }}` must be **the full provider resource name**, e.g.:<br>`projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/github` | In the workflow log, the `setup-gcloud` step prints a line `Using workload identity provider: …`. Make sure it’s the correct resource. |
+| **Correct project** | `project_id:` in `setup-gcloud` **must** be the project that contains the WIF pool **and** the service account. | You set `GOOGLE_CLOUD_PROJECT: clientgcp-462908`; keep that. |
+| **No conflicting ADC env-vars** | The self-hosted runner sometimes has `CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE` left over. Remove any you set manually earlier. | Make sure your workflow **does not** set these vars *before* `setup-gcloud`. |
 
+---
+
+## Minimal diagnostic workflow
+
+Run the snippet below — it stops after the auth step and prints everything we need to see. **Do not** include the cache action yet.
+
+```yaml
 name: WIF-debug
 
 on: [workflow_dispatch]
