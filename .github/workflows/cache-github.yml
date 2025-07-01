@@ -3,13 +3,15 @@ name: GitHub Cache Benchmark (Azure Blob)
 on:
   workflow_dispatch:
 
-env:
-  CACHE_KEY: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
 jobs:
   github-cache:
     name: GitHub-hosted runner with Azure cache
     runs-on: ubuntu-latest
+
+    env:
+      CACHE_KEY: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
     steps:
     - uses: actions/checkout@v4
 

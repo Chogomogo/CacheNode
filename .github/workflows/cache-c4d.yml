@@ -3,15 +3,16 @@ name: GCS Cache Benchmark (Self-hosted c4d)
 on:
   workflow_dispatch:
 
-env:
-  CACHE_KEY: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
 jobs:
   gcs-cache:
     name: GCS cache on c4d runner
     runs-on: self-hosted
     timeout-minutes: 45
-
+    
+    env:
+      CACHE_KEY: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      
     steps:
     - uses: actions/checkout@v4
 
