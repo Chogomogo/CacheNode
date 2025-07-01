@@ -41,7 +41,7 @@ jobs:
       - name: List candidate cache blobs
         run: gsutil ls gs://ci-cache-node-1720123456/Chogomogo/CacheNode || true
       
-       - name: Download & inspect cache archive
+      - name: Download & inspect cache archive
         run: |
           gsutil cp \
             gs://ci-cache-node-1720123456/Chogomogo/CacheNode/node-${{ runner.os }}-*.tar* \
