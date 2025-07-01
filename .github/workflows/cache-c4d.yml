@@ -1,20 +1,18 @@
-name: GCS Cache Benchmark (Self-hosted c4d)
-
-on:
-  push:
-    branches:
-      - '*'
-  workflow_dispatch:
-
 jobs:
   gcs-cache:
-    name: GCS cache on c4d runner
-    runs-on: self-hosted, c4d
-    timeout-minutes: 45
+    runs-on: self-hosted
+    
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Generate package-lock.json
+        run: npm install --package-lock-only
 
       - name: Authenticate with GCP via OIDC
         uses: google-github-actions/auth@v2
@@ -26,7 +24,7 @@ jobs:
         id: cache
         uses: mansagroup/gcs-cache-action@v2
         with:
-          bucket: ci-cache-node-1720123456    # ← your real bucket name
+          bucket: ci-cache-node-1720123456
           path: node_modules
           key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: node-
