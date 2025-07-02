@@ -1,4 +1,4 @@
-name: GitHub Cache Benchmark (Azure Blob)
+name: Node CI with GitHub Cache
 
 on:
   push:
@@ -6,38 +6,59 @@ on:
       - '*'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
-  github-cache:
+  build:
     runs-on: ubuntu-latest
 
+    env:
+      CACHE_DIR: node_modules
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Compute cache key
+        id: compute-key
+        run: |
+          if [ -f package-lock.json ]; then
+            FILE=package-lock.json
+          else
+            FILE=package.json
+          fi
+          HASH=$(sha256sum "$FILE" | cut -d' ' -f1)
+          echo "cache-key=$HASH" >> "$GITHUB_OUTPUT"
+
+      - name: Restore npm cache
+        id: cache-node
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: npm-${{ runner.os }}-${{ steps.compute-key.outputs.cache-key }}
+        # GitHub will automatically save the cache if there's a miss;
+        # if it's a hit, `cache-node.outputs.cache-hit == 'true'`.
+
+      - name: Log cache hit/miss and timing info
+        run: |
+          echo "Cache hit? ${{ steps.cache-node.outputs.cache-hit }}"
+          # GitHub’s runner log will include “Cache Size” and “Cache restored in ... ms”
+          # for download, and “Cache saved in ... ms” for upload if miss
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
-      - name: Restore cache from GitHub (Azure)
-        id: restore
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: node-
-
-      - name: Install dependencies if cache miss
-        if: steps.restore.outputs.cache-hit != 'true'
-        run: npm ci --ignore-scripts
-
-      - name: Save cache to GitHub (Azure)
-        if: steps.restore.outputs.cache-hit != 'true'
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-
-      - name: Summary
+      - name: Install dependencies
         run: |
-          du -sh node_modules || true
-          echo "cache_hit=${{ steps.restore.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
+          # Wrap npm ci in 'time' to measure local install speed
+          ( time npm ci )
+
+      - name: Verify cache saved
+        if: steps.cache-node.outputs.cache-hit == 'false'
+        run: |
+          echo "No cache was found, build artifacts were cached after install."
+
