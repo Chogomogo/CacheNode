@@ -55,7 +55,7 @@ jobs:
       - name: Install dependencies
         run: |
           # Wrap npm ci in 'time' to measure local install speed
-          ( time npm ci )
+          ( time npm ci --legacy-peer-deps )
 
       - name: Verify cache saved
         if: steps.cache-node.outputs.cache-hit == 'false'
