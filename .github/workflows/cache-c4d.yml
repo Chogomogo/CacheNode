@@ -70,7 +70,7 @@ jobs:
       - name: Install dependencies (npm ci)
         if: steps.check-cache.outputs.found == 'false'
         run: |
-          npm ci
+          npm install
 
       - name: Upload cache to GCS
         if: steps.check-cache.outputs.found == 'false'
