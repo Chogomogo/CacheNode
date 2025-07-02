@@ -1,85 +1,64 @@
-{
-    "name": "root",
-    "private": true,
-    "license": "GPL-3.0",
-    "scripts": {
-      "build": "node index.js"
-    },
-    "resolutions": {
-        "@pdf-lib/standard-fonts@^1.0.0": "patch:@pdf-lib/standard-fonts@npm%3A1.0.0#./.yarn/patches/@pdf-lib-standard-fonts-npm-1.0.0-963255903e.patch",
-        "@storybook/react-docgen-typescript-plugin": "1.0.6--canary.9.f9c48c0.0",
-        "electron-winstaller": "^5.4.0",
-        "json5": "^2.2.3",
-        "merge": "^2.1.1",
-        "node-gyp": "^11.2.0",
-        "rfc2047@^2.0.1": "patch:rfc2047@npm%3A2.0.1#./.yarn/patches/rfc2047-npm-2.0.1-60a2a07c99.patch",
-        "safe-buffer": "^5.2.1",
-        "terser": "^5.43.1",
-        "whatwg-url": "^14.2.0"
-    },
-    "dependencies": {
-        "@payloadcms/db-postgres": "3.33.0",
-        "@payloadcms/live-preview-react": "^3.33.0",
-        "@payloadcms/next": "3.33.0",
-        "@payloadcms/payload-cloud": "3.33.0",
-        "@payloadcms/plugin-form-builder": "3.33.0",
-        "@payloadcms/plugin-nested-docs": "3.33.0",
-        "@payloadcms/plugin-seo": "3.33.0",
-        "@payloadcms/richtext-lexical": "3.33.0",
-        "@payloadcms/storage-s3": "3.33.0",
-        "@payloadcms/ui": "3.33.0",
-        "common": "workspace:*",
-        "config": "workspace:*",
-        "cross-env": "^7.0.3",
-        "eslint-config-supabase": "workspace:*",
-        "graphql": "^16.8.1",
-        "next": "catalog:",
-        "payload": "3.33.0",
-        "react": "catalog:",
-        "react-dom": "catalog:",
-        "sharp": "0.32.6",
-        "@hookform/resolvers": "^3.1.1",
-        "contentlayer2": "0.4.6",
-        "icons": "workspace:*",
-        "jotai": "^2.8.0",
-        "lucide-react": "*",
-        "markdown-wasm": "^1.2.0",
-        "next-contentlayer2": "0.4.6",
-        "next-themes": "^0.3.0",
-        "react-docgen": "^7.0.3",
-        "react-hook-form": "^7.45.0",
-        "react-inlinesvg": "^4.0.4",
-        "react-wrap-balancer": "^1.1.0",
-        "recharts": "^2.12.7",
-        "rehype-autolink-headings": "^7.1.0",
-        "rehype-pretty-code": "^0.9.0",
-        "rehype-slug": "^6.0.0",
-        "remark": "^14.0.3",
-        "remark-code-import": "^1.2.0",
-        "remark-gfm": "^4.0.0",
-        "sonner": "^1.5.0",
-        "ts-morph": "^22.0.0",
-        "ui": "workspace:*",
-        "ui-patterns": "workspace:*",
-        "unist-util-visit": "^5.0.0",
-        "zod": "^3.22.4"
-    },
-    "devDependencies": {
-        "@trivago/prettier-plugin-sort-imports": "^5.2.2",
-        "@types/jest-when": "^3.5.5",
-        "danger": "^12.3.4",
-        "husky": "^9.1.7",
-        "lint-staged": "^16.1.2",
-        "nyc": "^17.1.0",
-        "prettier": "^3.6.2",
-        "sort-package-json": "^3.3.1",
-        "turbo": "^2.5.4"
-    },
-    "packageManager": "yarn@4.9.2",
-    "engines": {
-        "node": ">= 22.14.0 "
-    },
-    "publishConfig": {
-        "registry": "https://nexus.protontech.ch/repository/web-npm/"
-    }
-}
+name: Node CI with GitHub Cache
+
+on:
+  push:
+    branches:
+      - '*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      CACHE_DIR: node_modules
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Compute cache key
+        id: compute-key
+        run: |
+          if [ -f package-lock.json ]; then
+            FILE=package-lock.json
+          else
+            FILE=package.json
+          fi
+          HASH=$(sha256sum "$FILE" | cut -d' ' -f1)
+          echo "cache-key=$HASH" >> "$GITHUB_OUTPUT"
+
+      - name: Restore npm cache
+        id: cache-node
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: npm-${{ runner.os }}-${{ steps.compute-key.outputs.cache-key }}
+        # GitHub will automatically save the cache if there's a miss;
+        # if it's a hit, `cache-node.outputs.cache-hit == 'true'`.
+
+      - name: Log cache hit/miss and timing info
+        run: |
+          echo "Cache hit? ${{ steps.cache-node.outputs.cache-hit }}"
+          # GitHub’s runner log will include “Cache Size” and “Cache restored in ... ms”
+          # for download, and “Cache saved in ... ms” for upload if miss
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          # Wrap npm ci in 'time' to measure local install speed
+          ( time npm ci )
+
+      - name: Verify cache saved
+        if: steps.cache-node.outputs.cache-hit == 'false'
+        run: |
+          echo "No cache was found, build artifacts were cached after install."
+
