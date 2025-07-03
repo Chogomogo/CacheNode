@@ -1,9 +1,6 @@
 name: GCS Benchmark
 
 on:
-  push:
-    branches:
-      - '*'
   workflow_dispatch:   # you can also add schedule: if you like
 
 jobs:

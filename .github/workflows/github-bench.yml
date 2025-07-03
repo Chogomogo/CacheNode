@@ -1,0 +1,41 @@
+name: Github Benchmark
+
+on:
+  push:
+    branches:
+      - '*'
+  workflow_dispatch:   # you can also add schedule: if you like
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1) Make the script executable
+      - name: Make bench script executable
+        run: chmod +x scripts/cache-bench.sh
+
+      # 2) (Optional) Use `truncate` instead of dd for a sparse file
+      - name: Generate sparse 9 GiB file
+        run: |
+          mkdir -p cache-data
+          truncate -s 9G cache-data/test-9gb.bin
+
+      # 3) Save cache (upload)
+      - name: Save cache (upload)
+        uses: actions/cache@v3
+        with:
+          path: cache-data
+          key: cache-benchmark-9gb
+
+      # 4) Clear local data
+      - name: Clear local cache-data
+        run: rm -rf cache-data
+
+      # 5) Restore cache (download)
+      - name: Restore cache (download)
+        uses: actions/cache@v3
+        with:
+          path: cache-data
+          key: cache-benchmark-9gb
