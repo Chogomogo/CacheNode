@@ -12,7 +12,7 @@ if ! [ -f "$LOCAL_FILE" ]; then
   # Sparse file (takes no actual disk space until written/read):
   truncate -s 9G "$LOCAL_FILE"
   # If you want to force real zeroes (slow):
-  # dd if=/dev/zero of="$LOCAL_FILE" bs=1M count=9216 status=progress
+  dd if=/dev/zero of="$LOCAL_FILE" bs=1M count=9216 status=progress
 fi
 
 # 2. Upload benchmark
@@ -28,6 +28,9 @@ start=$(date +%s)
 gsutil cp gs://"$BUCKET"/"$OBJECT" "$DOWNLOADED"
 end=$(date +%s)
 echo "Download time: $((end - start)) seconds"
+
+gsutil ls -L gs://"$BUCKET"/test-9gb.bin
+
 
 # 4. Cleanup (optional)
 # rm -f "$LOCAL_FILE" "$DOWNLOADED"
