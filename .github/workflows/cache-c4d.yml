@@ -1,9 +1,6 @@
 name: Node CI with GCS Cache
 
 on:
-  push:
-    branches:
-      - '*'
   workflow_dispatch:
 
 permissions:

@@ -1,9 +1,6 @@
 name: Node CI with GitHub Cache
 
 on:
-  push:
-    branches:
-      - '*'
   workflow_dispatch:
 
 permissions:

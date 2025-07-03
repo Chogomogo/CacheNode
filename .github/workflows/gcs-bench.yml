@@ -1,0 +1,45 @@
+name: GCS Benchmark
+
+on:
+  push:
+    branches:
+      - '*'
+  workflow_dispatch:   # you can also add schedule: if you like
+
+jobs:
+  perf-test:
+    # run this on your self-hosted C4d runners
+    runs-on:
+      - self-hosted
+
+    permissions:
+      id-token: write    # for Workload Identity federation
+      contents: read     # to checkout your repo
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Make benchmark script executable
+        run: chmod +x scripts/gcs-bench.sh
+
+      - name: Authenticate with GCP via Service Account JSON
+        uses: google-github-actions/auth@v2
+        with:
+         credentials_json: '${{ secrets.JSON_SECRET }}'
+         export_environment_variables: true
+         create_credentials_file: true
+
+      - name: Configure gcloud & install gsutil
+        run: |
+          # install the Google Cloud CLI if not already present
+          if ! command -v gcloud; then
+            curl -sSL https://sdk.cloud.google.com | bash > /dev/null
+            source "$HOME/google-cloud-sdk/path.bash.inc"
+          fi
+          gcloud --quiet config set project clientgcp-462908
+
+      - name: Run GCS upload/download benchmark
+        run: ./scripts/gcs-bench.sh
+        env:
+          BUCKET: ci-cache-node-1720123456
